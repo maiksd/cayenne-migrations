@@ -44,10 +44,12 @@ public class ArbitrarySqlToDb extends AbstractToDbToken {
 		this.sql = sql;
 	}
 
+	@Override
 	public String getTokenValue() {
 		return sql;
 	}
 
+	@Override
 	public MergerToken createReverse(MergerTokenFactory factory) {
 		return new DummyReverseToken(this);
 	}
@@ -61,5 +63,4 @@ public class ArbitrarySqlToDb extends AbstractToDbToken {
 	public List<String> createSql(DbAdapter adapter) {
 		return Collections.singletonList(sql);
 	}
-
 }
