@@ -22,6 +22,11 @@
 			<name>Rebbi</name>
 			<url>scp://root@maven.rebbi.is/rebbi/is.rebbi.maven/html</url>
 		</repository>
+		<snapshotRepository>
+			<id>rebbi</id>
+			<name>Rebbi</name>
+			<url>scp://root@maven.rebbi.is/rebbi/is.rebbi.maven/html</url>
+		</snapshotRepository>
 	</distributionManagement>
 
 	<repositories>
