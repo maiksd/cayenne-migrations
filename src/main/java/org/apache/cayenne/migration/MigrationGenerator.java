@@ -82,7 +82,7 @@ public class MigrationGenerator {
 	}
 
 	private String className(DataMap map) {
-		return StringUtils.capitalize(map.getName()) + "0";
+		return capitalize(map.getName()) + "0";
 	}
 
 	protected void generateInitialMigration(DataMap map, String outputFilename) {
@@ -130,8 +130,8 @@ public class MigrationGenerator {
 	}
 
 	protected String fullyQualifiedTableName(DbEntity entity) {
-	    String fullyQualifiedTableName = StringUtils.isEmpty(entity.getCatalog()) ? "" : (entity.getCatalog()+".");
-	    fullyQualifiedTableName += StringUtils.isEmpty(entity.getSchema()) ? "" : (entity.getSchema()+".");
+	    String fullyQualifiedTableName = isEmpty(entity.getCatalog()) ? "" : (entity.getCatalog()+".");
+	    fullyQualifiedTableName += isEmpty(entity.getSchema()) ? "" : (entity.getSchema()+".");
 	    fullyQualifiedTableName += entity.getName();
 	    return fullyQualifiedTableName;
 	}
@@ -142,7 +142,7 @@ public class MigrationGenerator {
 		
 		for (DbAttribute attribute : entity.getAttributes()) {
 			String type = nameForJdbcType(attribute.getType());
-			type = StringUtils.capitalize(type);
+			type = capitalize(type);
 			
 			buffer.append("\t\t");
 			
@@ -202,7 +202,7 @@ public class MigrationGenerator {
 	}
 
 	protected String tableName(DbEntity entity) {
-		return StringUtils.uncapitalize(entity.getName());
+		return uncapitalize(entity.getName());
 	}
 
 	protected String nameForJdbcType(int type) {
@@ -247,4 +247,17 @@ public class MigrationGenerator {
 		        || type == Types.TIME; // for MySQL
 	}
 	
+	static boolean isEmpty(String str) {
+	    return str == null || str.isEmpty();
+	}
+
+	static String capitalize(String str) {
+	    int strLen;
+	    return str != null && (strLen = str.length()) != 0 ? (new StringBuilder()).append(Character.toTitleCase(str.charAt(0))).append(str.substring(1)).toString() : str;
+	}
+	
+	static String uncapitalize(String str) {
+	    int strLen;
+	    return str != null && (strLen = str.length()) != 0 ? (new StringBuilder()).append(Character.toLowerCase(str.charAt(0))).append(str.substring(1)).toString() : str;
+	}
 }

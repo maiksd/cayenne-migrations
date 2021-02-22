@@ -30,7 +30,8 @@ import org.apache.cayenne.dbsync.merge.token.db.AbstractToDbToken;
 import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.map.DataMap;
 import org.apache.commons.lang3.StringUtils;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The Migrator discovers and executes Migration subclasses in order to migrate
@@ -41,7 +42,7 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class Migrator {
 
-	//private static final Logger log = Logger.getLogger(Migrator.class);
+    private static final Logger log = LoggerFactory.getLogger(Migrator.class);
 
     public static boolean USE_EFFICIENT_ALTER_TABLE = false;
     
@@ -61,26 +62,33 @@ public class Migrator {
 
 	/**
 	 * The name of the table that holds the version and lock information for the Migrator to use.
+	 * @param map 
 	 * @return
 	 */
-	protected String migrationTableName() {
-		return "dbupdater";
+	protected String migrationTableName(DataMap map) {
+	    String schema = map.getDefaultSchema() != null ? map.getDefaultSchema() + "." : "";
+		return schema + "dbupdater";
 	}
 	
-	void createInternalMigrationSchema() throws SQLException {
-		executeSqlWithUpdateCount("CREATE TABLE " + migrationTableName() + "(dataMap VARCHAR(50) NOT NULL, version INTEGER DEFAULT -1 NOT NULL, locked SMALLINT DEFAULT 0 NOT NULL, PRIMARY KEY(dataMap))");
+	void createInternalMigrationSchema(DataMap map) throws SQLException {
+	    String schema = map.getDefaultSchema() != null ? map.getDefaultSchema() : null;
+	    if (schema != null) {
+	        executeSqlWithUpdateCount("CREATE SCHEMA IF NOT EXISTS " + schema);
+	    }
+	    
+		executeSqlWithUpdateCount("CREATE TABLE " + migrationTableName(map) + "(dataMap VARCHAR(50) NOT NULL, version INTEGER DEFAULT -1 NOT NULL, locked SMALLINT DEFAULT 0 NOT NULL, PRIMARY KEY(dataMap))");
 		getConnection().commit();
 	}
 	
 	int currentDbVersion(DataMap map) throws SQLException {
-	    String sql = String.format("SELECT version FROM %s WHERE dataMap = '%s'", migrationTableName(), map.getName());
+	    String sql = String.format("SELECT version FROM %s WHERE dataMap = '%s'", migrationTableName(map), map.getName());
 	    Integer version = null;
 	    try {
 	        version = executeSqlReturnInt(sql);
 	        return version != null ? version.intValue() : -1;
 	    } catch (Exception e) {
 	        try {
-	            createInternalMigrationSchema();
+	            createInternalMigrationSchema(map);
 	        } catch (Exception e2) {
 	            node.getJdbcEventLogger().log(e.getMessage());
 	        }
@@ -92,14 +100,14 @@ public class Migrator {
 	}
 	
 	void setDbVersion(DataMap map, int version) throws SQLException {
-		int count = executeSqlWithUpdateCount(String.format("UPDATE %s SET version = %d WHERE version = %d AND dataMap = '%s'", migrationTableName(), version, version-1, map.getName()));
+		int count = executeSqlWithUpdateCount(String.format("UPDATE %s SET version = %d WHERE version = %d AND dataMap = '%s'", migrationTableName(map), version, version-1, map.getName()));
 		if (count == 0) {
 			throw new RuntimeException("Unable to update database version for dataMap: " + map.getName());
 		}
 	}
 	
 	boolean lock(DataMap map) throws SQLException {
-		String sql = String.format("UPDATE %s SET locked = 1 WHERE locked=0 and dataMap='%s'", migrationTableName(), map.getName());
+		String sql = String.format("UPDATE %s SET locked = 1 WHERE locked=0 and dataMap='%s'", migrationTableName(map), map.getName());
 		int count = 0;
 		try {
 			count = executeSqlWithUpdateCount(sql);
@@ -107,13 +115,13 @@ public class Migrator {
 				return true; // got the lock
 			}
 		
-	        sql = String.format("SELECT locked FROM %s WHERE dataMap='%s'", migrationTableName(), map.getName());
+	        sql = String.format("SELECT locked FROM %s WHERE dataMap='%s'", migrationTableName(map), map.getName());
 	        Integer locked = executeSqlReturnInt(sql);
 	        if (locked != null) {
 	        	return false; // row exists and is already locked
 	        } else {
 	        	// row doesn't exist
-	        	sql = String.format("INSERT INTO %s(dataMap, locked) VALUES ('%s', 1)", migrationTableName(), map.getName());
+	        	sql = String.format("INSERT INTO %s(dataMap, locked) VALUES ('%s', 1)", migrationTableName(map), map.getName());
 	        	executeSqlWithUpdateCount(sql);
 	        	return true;
 	        }
@@ -123,7 +131,7 @@ public class Migrator {
 	}
 	
 	String unlockSql(DataMap map) {
-	    return String.format("UPDATE %s SET locked = 0 WHERE locked = 1 AND dataMap = '%s'", migrationTableName(), map.getName());
+	    return String.format("UPDATE %s SET locked = 0 WHERE locked = 1 AND dataMap = '%s'", migrationTableName(map), map.getName());
 	}
 	
 	void unlock(DataMap map) throws SQLException {
@@ -135,7 +143,7 @@ public class Migrator {
 	}
 	
 	Migration createMigrationClassForVersion(DataMap map, int version) {
-		String className = migrationsPackage + "." + StringUtils.capitalize(map.getName()) + version;
+		String className = migrationsPackage + "." + MigrationGenerator.capitalize(map.getName()) + version;
 		
 		Class<?> clazz;
 		try {
@@ -143,7 +151,7 @@ public class Migrator {
 			Migration instance = (Migration) clazz.getConstructor(DataNode.class).newInstance(node);
 			return instance;
 		} catch (Exception e) {
-			//log.debug("Migration class not found: " + className + "; stopping at version " + (version-1) + ".");
+			log.debug("Migration class not found: " + className + "; stopping at version " + (version-1) + ".");
 			return null;
 		}
 	}
@@ -165,7 +173,7 @@ public class Migrator {
                     Migration migration = createMigrationClassForVersion(map, version);
                     if (migration != null) {
                         while (!lock(map)) {
-                            node.getJdbcEventLogger().log("Waiting to obtain migration lock for node: " + node.getName() + ". " +
+                            log.warn("Waiting to obtain migration lock for node: " + node.getName() + ". " +
                                     "If you terminated the application while a migration was in progress " +
                                     "you will need to clear the migration lock by running: " +
                                     unlockSql(map));
@@ -180,13 +188,13 @@ public class Migrator {
                         
     					try {
     						while ((migration = createMigrationClassForVersion(map, version)) != null) {
-    						    node.getJdbcEventLogger().log(String.format("Updating dataMap '%s' to version %d", map.getName(), version));
+    						    log.info(String.format("Updating dataMap '%s' to version %d", map.getName(), version));
     						    migration.getDatabase().setDatabaseProductName(getConnection().getMetaData().getDatabaseProductName());
     							migration.run();
     							try {
     							    executeOperations(migration.getDatabase().getOperations());
     							} catch (Exception e) {
-    							    throw new RuntimeException("Failed to migrate node=" + node.getName() + ", dataMap=" + map.getName() + " to version=" + version + ": " + e.getMessage());
+    							    throw new RuntimeException("Failed to migrate node=" + node.getName() + ", dataMap=" + map.getName() + " to version=" + version + ": " + e.getMessage(), e);
     							}
     							setDbVersion(map, version);
     							getConnection().commit();
