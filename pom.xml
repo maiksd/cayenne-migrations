@@ -8,7 +8,7 @@
 	<version>${cayenne.version}</version>
 
 	<properties>
-		<cayenne.version>4.1.1</cayenne.version>
+		<cayenne.version>4.2.1</cayenne.version>
 	</properties>
 
 	<distributionManagement>
