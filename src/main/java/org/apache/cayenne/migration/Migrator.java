@@ -29,7 +29,6 @@ import org.apache.cayenne.dbsync.merge.token.MergerToken;
 import org.apache.cayenne.dbsync.merge.token.db.AbstractToDbToken;
 import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.map.DataMap;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +61,7 @@ public class Migrator {
 
 	/**
 	 * The name of the table that holds the version and lock information for the Migrator to use.
-	 * @param map 
+	 * @param map
 	 * @return
 	 */
 	protected String migrationTableName(DataMap map) {

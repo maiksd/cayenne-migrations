@@ -46,11 +46,6 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.12</version>
-		</dependency>
-		<dependency>
 			<groupId>org.apache.cayenne</groupId>
 			<artifactId>cayenne-server</artifactId>
 			<version>${cayenne.version}</version>
@@ -63,7 +58,13 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<version>3.8.1</version>
+			<version>3.12.0</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<build>
@@ -72,8 +73,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>17</source>
+					<target>17</target>
 				</configuration>
 			</plugin>
 			<plugin>
